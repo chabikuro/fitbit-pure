@@ -1,12 +1,14 @@
 import { me as app } from 'appbit';
 import { me as device } from 'device';
 import { display, Display } from 'display';
+import document from 'document';
 import { vibration, VibrationPatternName } from 'haptics';
 import { gettext } from 'i18n';
 import { Goals, goals, today } from 'user-activity';
 import { locale } from 'user-settings';
 import { defer, log } from '../common/system';
 import { ConfigChanged, configuration } from './configuration';
+import { UnlockPopup } from './popup';
 
 const arcWidth = 48;
 const screenWidth = device.screen.width;
@@ -35,12 +37,19 @@ interface ActivityGroup {
 	right: Activity;
 }
 
+interface SquareButtonElement extends Element, Styled {}
+
 export class ActivityDisplay {
+	private _donationPopup: UnlockPopup | undefined;
+	private $unlock: SquareButtonElement | undefined;
+
 	constructor(
 		private readonly $trigger: RectElement,
 		private readonly $view: GroupElement,
 		private readonly activities: ActivityGroup[]
 	) {
+		configuration.set('unlocked', false);
+
 		if (!app.permissions.granted('access_activity')) return;
 
 		display.addEventListener('change', () => this.onDisplayChanged(display));
@@ -60,7 +69,37 @@ export class ActivityDisplay {
 		0: e => `e.key=${e?.key}`
 	})
 	private onConfigurationChanged(e?: ConfigChanged) {
-		if (e?.key != null && e.key !== 'showActivityUnits' /*&& e.key !== 'showDate'*/) return;
+		if (e?.key != null && e.key !== 'showActivityUnits' /*&& e.key !== 'showDate'*/ && e.key !== 'unlocked') return;
+
+		if (e?.key == null || e?.key === 'unlocked') {
+			if (configuration.get('unlocked')) {
+				for (const { $container } of this.activities) {
+					$container.style.visibility = 'visible';
+				}
+
+				if (this.$unlock != null) {
+					this.$unlock.style.display = 'none';
+				}
+
+				if (this._donationPopup != null) {
+					this._donationPopup.dispose();
+					this._donationPopup = undefined;
+				}
+			} else {
+				for (const { $container } of this.activities) {
+					$container.style.visibility = 'hidden';
+				}
+
+				this.$unlock = this.activities[0].$container.parent?.getElementById(
+					'unlock-button'
+				) as SquareButtonElement;
+				this.$unlock.addEventListener('click', () => this.onUnlockClicked());
+
+				this.$unlock.style.display = 'inline';
+			}
+
+			if (e?.key === 'unlocked') return;
+		}
 
 		// if (e?.key == null || e?.key === 'showDate') {
 		// 	if (!configuration.get('showDate') && this.getView() === 0) {
@@ -134,6 +173,31 @@ export class ActivityDisplay {
 	private onViewClicked() {
 		let index = this.getView();
 
+		// if (!configuration.get('unlocked')) {
+		// 	this.setView(index === 0 ? 1 : 0);
+		// 	// Force an update, since we can't trust the cycleview to always do it)
+		// 	this.onViewChanged(index);
+
+		// 	return;
+		// }
+
+		// if (!configuration.get('unlocked')) {
+		// 	if (this._donationPopup == null) {
+		// 		this._donationPopup = new UnlockPopup(document.getElementById('popup-code')! as GroupElement);
+		// 	}
+
+		// 	if (this._donationPopup.show()) {
+		// 		this.setView(0);
+		// 		// Force an update, since we can't trust the cycleview to always do it)
+		// 		this.onViewChanged(index);
+
+		// 		return;
+		// 	}
+		// } else if (this._donationPopup != null) {
+		// 	this._donationPopup.dispose();
+		// 	this._donationPopup = undefined;
+		// }
+
 		// Force an unselect to reset the animation when an activity is hidden
 		this.activities[0].$container.animate('unselect');
 		this.activities[1].$container.animate('unselect');
@@ -141,6 +205,14 @@ export class ActivityDisplay {
 		index = this.setView(index + 1, 'bump');
 		// Force an update, since we can't trust the cycleview to always do it)
 		this.onViewChanged(index);
+	}
+
+	@log('ActivityDisplay')
+	private onUnlockClicked() {
+		if (this._donationPopup == null) {
+			this._donationPopup = new UnlockPopup(document.getElementById('popup-code')! as GroupElement);
+		}
+		this._donationPopup.show();
 	}
 
 	@defer()
@@ -253,6 +325,10 @@ export class ActivityDisplay {
 
 	private setView(index: number, vibrationPattern?: VibrationPatternName) {
 		if (index < 0 || index > 2) {
+			index = 0;
+		}
+
+		if (!configuration.get('unlocked') && index > 1) {
 			index = 0;
 		}
 

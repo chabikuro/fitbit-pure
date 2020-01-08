@@ -15,7 +15,7 @@ if (display.aodAvailable && app.permissions.granted('access_aod')) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const displays = [
+const container: any[] = [
 	new Bars(getElementById<GroupElement>('top-bar'), getElementById<GroupElement>('bottom-bar')),
 	new TimeDisplay(
 		getElementById<GroupElement>('time-display'),

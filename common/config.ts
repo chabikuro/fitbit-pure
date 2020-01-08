@@ -11,6 +11,7 @@ export interface Config {
 	showSeconds: boolean | null;
 
 	currentActivityView: number | null;
+	unlocked: boolean | null;
 }
 
 export const defaultConfig: Config = {
@@ -24,7 +25,8 @@ export const defaultConfig: Config = {
 	showLeadingZero: true,
 	showRestingHeartRate: true,
 	showSeconds: false,
-	currentActivityView: 0
+	currentActivityView: 0,
+	unlocked: false
 };
 
 export const emptyConfig: Config = {
@@ -38,5 +40,6 @@ export const emptyConfig: Config = {
 	showLeadingZero: null,
 	showRestingHeartRate: null,
 	showSeconds: null,
-	currentActivityView: null
+	currentActivityView: null,
+	unlocked: null
 };

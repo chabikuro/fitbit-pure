@@ -29,7 +29,10 @@ class Configuration {
 
 		// If the key is `null` assume a reset
 		if (e.data.key == null) {
-			this._config = { ...emptyConfig };
+			this._config = {
+				...emptyConfig,
+				unlocked: this._config.unlocked
+			};
 		} else {
 			this._config[e.data.key] = e.data.value;
 		}
